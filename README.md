@@ -7,7 +7,7 @@ ssao，ssdo效果对比
 ![ssao](SSAO.png)
 ![ssao&&ssdo](AODO.png)
 micofacet BRDF pbr理解思路
-![understanding](PBR.j)
+![understanding](PBR.jpg)
 实现效果
 ![pbr](micoficetBRDF.png)
 
