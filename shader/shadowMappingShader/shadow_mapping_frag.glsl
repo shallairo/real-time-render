@@ -13,21 +13,7 @@ uniform sampler2D shadowMap;
 
 uniform vec3 lightPos;
 uniform vec3 viewPos;
-// float PCF(float currentDepth, float bias, vec2 projCoords){
-//     float shadow = 0.0;
-//     vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
-//     for(int x = -1; x <= 1; ++x)
-//     {
-//         for(int y = -1; y <= 1; ++y)
-//         {
-//             float pcfDepth = texture(shadowMap, projCoords + vec2(x, y) * texelSize).r; 
-//             shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;        
-//         }    
-//     }
-//     shadow /= 9.0;
-//     return shadow;
 
-// }
 float findBlocker(float currentDepth, vec3 projCoords,int samples){
     float blockerDepth=0.0;
     int blockerCount=0;

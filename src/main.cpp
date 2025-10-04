@@ -24,6 +24,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void mouse_callback(GLFWwindow *window, double xpos, double ypos);
 void processInput(GLFWwindow *window);
 unsigned int loadTexture(char const *path);
+unsigned int createDefaultWhiteTexture();
 
 // method
 void drawMesh(BufferGeometry geometry);
@@ -47,7 +48,7 @@ float lastTime = 0.0f;
 float lastX = SCREEN_WIDTH / 2.0f; // 鼠标上一帧的位置
 float lastY = SCREEN_HEIGHT / 2.0f;
 
-Camera camera(glm::vec3(0.0, 1.0, 7.0));
+Camera camera(glm::vec3(0.0, 0.0, 25.0));
 
 using namespace std;
 
@@ -57,14 +58,9 @@ float lerp(float a, float b, float f)
   return a + f * (b - a);
 }
 
-//开启效果
-bool enableSSAO = true;
-bool enableSSDO = false;
-
-
-int main()
+int main(int argc, char *argv[])
 {
- 
+  
   glfwInit();
   // 设置主要和次要版本
   const char *glsl_version = "#version 330";
@@ -77,10 +73,8 @@ int main()
 
   // 窗口对象
   GLFWwindow *window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "LearnOpenGL", NULL, NULL);
-  if (window == NULL)
-  {
-    std::cout << "Failed to create GLFW window" << std::endl;
-    glfwTerminate();
+  if (!window) {
+    std::cout << "GLFW window creation failed!" << std::endl;
     return -1;
   }
   glfwMakeContextCurrent(window);
@@ -108,15 +102,13 @@ int main()
   glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
   glEnable(GL_PROGRAM_POINT_SIZE);
 
-  // // 启用混合
-  // glEnable(GL_BLEND);
-  // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  // 启用混合
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   // 深度测试
   glEnable(GL_DEPTH_TEST);
-  glDepthFunc(GL_LESS);
-
-  glEnable(GL_CULL_FACE);
+  // glDepthFunc(GL_LESS);
 
   // 鼠标键盘事件
   // 1.注册窗口变化监听
@@ -125,204 +117,58 @@ int main()
   glfwSetCursorPosCallback(window, mouse_callback);
   // 3.将鼠标隐藏
   glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-  //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-  Shader gbufferShader("shader/ssaoShader/ssao_geometry_vert.glsl", "shader/ssaoShader/ssao_geometry_frag.glsl");
-  Shader finalShader("shader/ssaoShader/ssao_vert.glsl", "shader/ssaoShader/ssao_lighting_frag.glsl");
-  Shader ssaoShader("shader/ssaoShader/ssao_vert.glsl", "shader/ssaoShader/ssao_frag.glsl");
-  Shader ssaoBlurShader("shader/ssaoShader/ssao_vert.glsl", "shader/ssaoShader/ssaoBlur_frag.glsl");
 
-  Shader ssdoShader("shader/ssdoShader/ssdo_vert.glsl", "shader/ssdoShader/ssdo_frag.glsl");
-  Shader ssdoBlurShader("shader/ssdoShader/ssdo_vert.glsl", "shader/ssdoShader/ssdoBlur_frag.glsl");
-
-  Shader lightObjShader("shader/ssaoShader/light_object_vert.glsl", "shader/ssaoShader/light_object_frag.glsl");
-
-  Shader shadowShader("shader/shadowMappingShader/shadow_mapping_depth_vert.glsl", "shader/shadowMapping/shadow_mapping_depth_frag.glsl");
-  Shader shdowMapingShader("shader/shadowMappingShader/shadow_mapping_vert.glsl", "shader/shadowMapping/shadow_mapping_frag.glsl");
+  Shader sceneShader("shader/pbrLightShader/scene_vert.glsl", "shader/pbrLightShader/scene_texture_frag.glsl");
+  Shader sceneTextureShader("shader/pbrLightShader/scene_vert.glsl", "shader/pbrLightShader/scene_texture_frag.glsl");
+  Shader lightObjShader("shader/pbrLightShader/light_object_vert.glsl", "shader/pbrLightShader/light_object_frag.glsl");
 
   PlaneGeometry groundGeometry(10.0, 10.0);            // 地面
-  PlaneGeometry grassGeometry(1.0, 1.0);               // 草丛
   BoxGeometry boxGeometry(1.0, 1.0, 1.0);              // 盒子
-  SphereGeometry pointLightGeometry(0.07, 20.0, 20.0); // 点光源位置显示
+  SphereGeometry pointLightGeometry(0.17, 64.0, 64.0); // 点光源位置显示
+  SphereGeometry objectGeometry(1.0, 64.0, 64.0);      // 圆球
 
-  SphereGeometry objectGeometry(1.0, 50.0, 50.0); // 圆球
-  PlaneGeometry quadGeometry(2.0, 2.0);           // hdr输出平面
+  // 点光源的位置
+  vector<glm::vec3> lightPositions{
+      glm::vec3(-10.0f, 10.0f, 10.0f),
+      glm::vec3(10.0f, 10.0f, 10.0f),
+      glm::vec3(-10.0f, -10.0f, 10.0f),
+      glm::vec3(10.0f, -10.0f, 10.0f),
+  };
 
-  // 配置 G-Buffer 缓冲区
-  // -------------------
-  GLuint gBuffer;
-  glGenFramebuffers(1, &gBuffer);
-  glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
-  GLuint gPosition, gNormal, gColorSpec;
+  // 点光源颜色
+  vector<glm::vec3> lightColors{
+      glm::vec3(300.0f, 300.0f, 300.0f),
+      glm::vec3(300.0f, 300.0f, 300.0f),
+      glm::vec3(300.0f, 300.0f, 300.0f),
+      glm::vec3(300.0f, 300.0f, 300.0f),
+  };
 
-  // - 位置颜色缓冲
-  glGenTextures(1, &gPosition);
-  glBindTexture(GL_TEXTURE_2D, gPosition);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, gPosition, 0);
+  int nrRows = 7;
+  int nrColumns = 7;
+  float spacing = 2.5;
 
-  // - 法线颜色缓冲
-  glGenTextures(1, &gNormal);
-  glBindTexture(GL_TEXTURE_2D, gNormal);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, gNormal, 0);
+  sceneShader.use();
+  sceneShader.setVec3("albedo", 0.0f, 0.5f, 0.0f);
+  sceneShader.setFloat("ao", 1.0f);
 
-  // - 颜色和镜面颜色缓冲
-  glGenTextures(1, &gColorSpec);
-  glBindTexture(GL_TEXTURE_2D, gColorSpec);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT2, GL_TEXTURE_2D, gColorSpec, 0);
+  // unsigned int albedoMap = loadTexture("./static/texture/solar/TexturesCom_PaintedConcreteFloor_1K_albedo.png");
+  // unsigned int normalMap = loadTexture("./static/texture/solar/TexturesCom_PaintedConcreteFloor_1K_normal.png");
+  // unsigned int metallicMap = loadTexture("./static/texture/solar/TexturesCom_PaintedConcreteFloor_1K_metallic.png");
+  // unsigned int roughnessMap = loadTexture("./static/texture/solar/TexturesCom_PaintedConcreteFloor_1K_roughness.png");
+  // unsigned int aoMap = loadTexture("./static/texture/solar/TexturesCom_PaintedConcreteFloor_1K_ao.png");
 
-  // - 告诉OpenGL我们要使用（帧缓冲的）那种颜色附件来进行渲染
-  GLuint attachments[3] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2};
-  glDrawBuffers(3, attachments);
+  unsigned int albedoMap = loadTexture("static/texture/tiles/TexturesCom_Marble_TilesSquare8_512_albedo.png");
+  unsigned int normalMap = loadTexture("static/texture/tiles/TexturesCom_Marble_TilesSquare8_512_normal.png");
+  unsigned int roughnessMap = loadTexture("static/texture/tiles/TexturesCom_Marble_TilesSquare8_512_roughness.png");
+  unsigned int  metallicMap = loadTexture("static/texture/solar/TexturesCom_PaintedConcreteFloor_1K_metallic.png");
+  unsigned int aoMap = loadTexture("static/texture/solar/TexturesCom_PaintedConcreteFloor_1K_ao.png");
 
-  // 创建并附加到深度缓冲区
-  unsigned int rboDepth;
-  glGenRenderbuffers(1, &rboDepth);
-  glBindRenderbuffer(GL_RENDERBUFFER, rboDepth);
-  glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, SCREEN_WIDTH, SCREEN_HEIGHT);
-  glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rboDepth);
-
-  // 检查framebuffer 是否编译成功
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    cout << "Framebuffer 编译失败！" << endl;
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  // 创建帧缓冲区保存SSAO阶段的输出
-  // ---------------------------
-  unsigned int ssaoFBO, ssaoBlurFBO;
-  glGenFramebuffers(1, &ssaoFBO);
-  glGenFramebuffers(1, &ssaoBlurFBO);
-  glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-  unsigned int ssaoColorBuffer, ssaoColorBufferBler;
-  // SSAO color buffer
-  glGenTextures(1, &ssaoColorBuffer);
-  glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RED, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBuffer, 0);
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    cout << "SSAO Framebuffer 编译失败！" << endl;
-
-  // ssao bulrBuffer
-  glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
-  glGenTextures(1, &ssaoColorBufferBler);
-  glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBler);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RED, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoColorBufferBler, 0);
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    cout << "SSAO Framebuffer 编译失败！" << endl;
-
-  //ssdo
-  unsigned int ssdoFbo, ssdoBlurFbo;
-  glGenFramebuffers(1, &ssdoFbo);
-  glGenFramebuffers(1, &ssdoBlurFbo);
-  glBindFramebuffer(GL_FRAMEBUFFER, ssdoFbo);
-  unsigned int ssdoColorBuffer, ssdoColorBufferBler;
-  // SSDO color buffer
-  glGenTextures(1, &ssdoColorBuffer);
-  glBindTexture(GL_TEXTURE_2D, ssdoColorBuffer);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssdoColorBuffer, 0);
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    cout << "SSDO Framebuffer 编译失败！" << endl;
-
-  // ssdo bulrBuffer
-  glBindFramebuffer(GL_FRAMEBUFFER, ssdoBlurFbo);
-  glGenTextures(1, &ssdoColorBufferBler);
-  glBindTexture(GL_TEXTURE_2D, ssdoColorBufferBler);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB16F, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGB, GL_FLOAT, NULL);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssdoColorBufferBler, 0);
-  if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    cout << "SSDO Framebuffer 编译失败！" << endl;
-  
-  glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-  // 生成样本内核
-  std::uniform_real_distribution<float> randomFloats(0.0f, 1.0f); // 生成介于0.0到1.0之间的随机浮点数
-  std::default_random_engine generator;
-  std::vector<glm::vec3> ssaoKernel;
-  for (unsigned int i = 0; i < 64; i++)
-  {
-    glm::vec3 sample(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, randomFloats(generator));
-    sample = glm::normalize(sample);
-    sample *= randomFloats(generator);
-    float scale = float(i) / 64.0;
-
-    //非线性分布
-    // 将核心样本靠近原点分布，使用加速插值函数
-    scale = lerp(0.1f, 1.0f, scale * scale);
-    sample *= scale;
-    ssaoKernel.push_back(sample);
-  }
-
-  // 生成噪声纹理
-  // -----------
-  std::vector<glm::vec3> ssaoNoise;
-  for (unsigned int i = 0; i < 16; i++)
-  {
-    // 在切线空间中，绕z轴旋转
-    glm::vec3 noise(randomFloats(generator) * 2.0 - 1.0, randomFloats(generator) * 2.0 - 1.0, 0.0f);
-    ssaoNoise.push_back(noise);
-  }
-  // 创建一个包含随机旋转向量的4*4纹理
-  unsigned int noiseTexture;
-  glGenTextures(1, &noiseTexture);
-  glBindTexture(GL_TEXTURE_2D, noiseTexture);
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, 4, 4, 0, GL_RGB, GL_FLOAT, &ssaoNoise[0]);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-
-  // 灯光设置
-  // -------
-  glm::vec3 lightPos = glm::vec3(2.0, 4.0, 2.0);
-  glm::vec3 lightColor = glm::vec3(0.1, 0.9, 0.1);
-
-  // 设置shader
-  // -----------------
-  finalShader.use();
-  finalShader.setInt("gPosition", 0);
-  finalShader.setInt("gNormal", 1);
-  finalShader.setInt("gAlbedo", 2);
-  finalShader.setInt("ssao", 3);
-  finalShader.setInt("ssdoColor", 4);
-
-  ssaoShader.use();
-  ssaoShader.setInt("gPosition", 0);
-  ssaoShader.setInt("gNormal", 1);
-  ssaoShader.setInt("texNoise", 2);
-
-  ssaoBlurShader.use();
-  ssaoBlurShader.setInt("ssapInput", 0);
-
-
-  ssdoShader.use();
-  ssdoShader.setInt("gPosition", 0);
-  ssdoShader.setInt("gNormal", 1);
-  ssdoShader.setInt("gAlbedo", 2);
-  ssdoShader.setInt("texNoise", 3);
-
-  ssdoBlurShader.use();
-  ssdoBlurShader.setInt("ssdoInput", 0);
-  ssaoBlurShader.setInt("gPosition", 1);
-  Model modelObject("static/model/teapot/teapot.obj");
-
-
+  // 设置贴图
+  sceneShader.setInt("albedoMap", 0);
+  sceneShader.setInt("normalMap", 1);
+  sceneShader.setInt("metallicMap", 2);
+  sceneShader.setInt("roughnessMap", 3);
+  sceneShader.setInt("aoMap", 4);
 
   while (!glfwWindowShouldClose(window))
   {
@@ -340,200 +186,88 @@ int main()
     std::string FPS = std::to_string(fps_value);
     std::string ms = std::to_string(ms_value);
     std::string newTitle = "LearnOpenGL - " + ms + " ms/frame " + FPS;
+  
     glfwSetWindowTitle(window, newTitle.c_str());
+   
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-
-    
-    
-    ImGui::Begin("Render Settings");
-    ImGui::Checkbox("Enable SSAO", &enableSSAO);
-    ImGui::Text("Press [F] to toggle SSAO");
-    ImGui::End();
-
     // *************************************************************************
 
-    // 渲染指令
-    // ...
-    glClearColor(25.0 / 255.0, 25.0 / 255.0, 25.0 / 255.0, 1.0);
 
-    // 1.将场景的position depth normal 渲染到gbuffer
-    glBindFramebuffer(GL_FRAMEBUFFER, gBuffer);
+    glClearColor(25.0 / 255.0, 25.0 / 255.0, 25.0 / 255.0, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT, 0.1f, 100.0f);
     glm::mat4 view = camera.GetViewMatrix();
     glm::mat4 model = glm::mat4(1.0f);
 
-    gbufferShader.use();
-    gbufferShader.setMat4("projection", projection);
-    gbufferShader.setMat4("view", view);
-
-    // cout << camera.Position.x << "--" << camera.Position.y << "--" << camera.Position.z << endl;
-
-    // room cube
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0, 4.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(15.0f, 10.0F, 15.0F));
-
-    gbufferShader.setMat4("model", model);
-    gbufferShader.setInt("invertedNormals", 1); // 在立方体内反转法线
-
-    glCullFace(GL_FRONT);
-    drawMesh(boxGeometry);
-    gbufferShader.setInt("invertedNormals", 0);
-
-    glCullFace(GL_BACK);
-
-    // draw model
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -0.35f, 4.0f));
-    model = glm::rotate(model, glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.7f));
-
-    gbufferShader.setMat4("model", model);
-    drawMesh(objectGeometry);
-
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -1.0f, 0.0f));
-    model = glm::scale(model, glm::vec3(0.015f));
-    gbufferShader.setMat4("model", model);
-    modelObject.Draw(gbufferShader);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    // 2. 生成SSAO 贴图
-    // ---------------
-    glBindFramebuffer(GL_FRAMEBUFFER, ssaoFBO);
-    glClear(GL_COLOR_BUFFER_BIT);
-    ssaoShader.use();
-    // Send kernel + rotation
-    for (unsigned int i = 0; i < 64; ++i)
-    ssaoShader.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);
-    ssaoShader.setMat4("projection", projection);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, gPosition);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, gNormal);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, noiseTexture);
-    drawMesh(quadGeometry);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    // 3. blur SSAO texture to remove noise
-    // ------------------------------------
-    //双向高斯模糊
-    glBindFramebuffer(GL_FRAMEBUFFER, ssaoBlurFBO);
-    glClear(GL_COLOR_BUFFER_BIT);
-    ssaoBlurShader.use();
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
-    glActiveTexture(GL_TEXTURE1);
-    ssaoBlurShader.setVec2("blurDirection", glm::vec2(1.0f, 0.0f));
-    drawMesh(quadGeometry);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, ssaoColorBuffer);
-    ssaoBlurShader.setVec2("blurDirection", glm::vec2(0.0f, 1.0f));
-    drawMesh(quadGeometry);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-
-    //4.  ssdo map
-    glBindFramebuffer(GL_FRAMEBUFFER, ssdoFbo);
-    glClear(GL_COLOR_BUFFER_BIT);
-    ssdoShader.use();
-    // Send kernel + rotation
-    for (unsigned int i = 0; i < 64; ++i)
-    ssdoShader.setVec3("samples[" + std::to_string(i) + "]", ssaoKernel[i]);
-    ssdoShader.setMat4("projection", projection);
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, gPosition);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, gNormal);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, gColorSpec);
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, noiseTexture);
-    drawMesh(quadGeometry);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    // 5. blur ssdo texture to remove noise
-    // ------------------------------------
-    //双向高斯模糊
-    glBindFramebuffer(GL_FRAMEBUFFER, ssdoBlurFbo);
-    glClear(GL_COLOR_BUFFER_BIT);
-    ssdoBlurShader.use();
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, ssdoColorBuffer);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, gPosition);
-    ssdoBlurShader.setVec2("blurDirection", glm::vec2(1.0f, 0.0f));
-    drawMesh(quadGeometry);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, ssdoColorBuffer);
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, gPosition);
-    ssdoBlurShader.setVec2("blurDirection", glm::vec2(0.0f, 1.0f));
-    drawMesh(quadGeometry);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-
-    // 6. lighting pass: traditional deferred Blinn-Phong lighting with added screen-space ambient occlusion
-    // -----------------------------------------------------------------------------------------------------
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    finalShader.use();
-
     float radius = 5.0f;
     float camX = sin(glfwGetTime() * 0.5) * radius;
     float camZ = cos(glfwGetTime() * 0.5) * radius;
 
-    // lightPos.x = camX;
-    // lightPos.z = camZ;
+    lightPositions[1].x = camX;
+    lightPositions[1].y = camZ;
 
-    // send light relevant uniforms
-    glm::vec3 lightPosView = glm::vec3(camera.GetViewMatrix() * glm::vec4(lightPos, 1.0));
-    finalShader.setVec3("light.Position", lightPosView);
-    finalShader.setVec3("light.Color", lightColor);
+    for (unsigned int i = 0; i < lightPositions.size(); i++)
+    {
+      glm::vec3 newPos = lightPositions[i] + glm::vec3(sin(glfwGetTime() * 5.0) * 15.0, 0.0, 0.0);
+      newPos = lightPositions[i];
+      sceneShader.use();
+      sceneShader.setVec3("lightPositions[" + std::to_string(i) + "]", newPos);
+      sceneShader.setVec3("lightColors[" + std::to_string(i) + "]", lightColors[i]);
+    }
 
-    // Update attenuation parameters
-    const float linear = 0.09;
-    const float quadratic = 0.032;
-    finalShader.setFloat("light.Linear", linear);
-    finalShader.setFloat("light.Quadratic", quadratic);
-    finalShader.setInt("enableSSAO", enableSSAO);
-    finalShader.setInt("enableSSDO", !enableSSDO);
+    sceneShader.setMat4("projection", projection);
+    sceneShader.setMat4("view", view);
+    sceneShader.setVec3("camPos", camera.Position);
+
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, gPosition);
+    glBindTexture(GL_TEXTURE_2D, albedoMap);
     glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, gNormal);
+    glBindTexture(GL_TEXTURE_2D, normalMap);
     glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, gColorSpec);
-    glActiveTexture(GL_TEXTURE3); // add extra SSAO texture to lighting pass
-    glBindTexture(GL_TEXTURE_2D, ssaoColorBufferBler);
-    glActiveTexture(GL_TEXTURE4); // add extra ssdo texture to lighting pass
-    glBindTexture(GL_TEXTURE_2D, ssdoColorBufferBler);
-    drawMesh(quadGeometry);
+    glBindTexture(GL_TEXTURE_2D, metallicMap);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, roughnessMap);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, aoMap);
+
+    for (int row = 0; row < nrRows; ++row)
+    {
+      sceneShader.setFloat("metallic", (float)row / (float)nrRows);
+      for (int col = 0; col < nrColumns; ++col)
+      {
+
+        sceneShader.setFloat("roughness", glm::clamp((float)col / (float)nrColumns, 0.05f, 1.0f));
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3((col - (nrColumns / 2)) * spacing, (row - (nrRows / 2)) * spacing, 0.0f));
+        sceneShader.setMat4("model", model);
+
+        // ........render
+        drawMesh(objectGeometry);
+      }
+    }
 
     // 绘制灯光物体
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, gBuffer);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // 指定默认的帧缓冲为写缓冲
-    // 复制gbuffer的深度信息到默认帧缓冲的深度缓冲
-    glBlitFramebuffer(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
+    // --------------------------
     lightObjShader.use();
     lightObjShader.setMat4("view", view);
     lightObjShader.setMat4("projection", projection);
 
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, lightPos);
+    for (unsigned int i = 0; i < lightPositions.size(); i++)
+    {
+      glm::vec3 newPos = lightPositions[i] + glm::vec3(sin(glfwGetTime() * 5.0) * 5.0, 0.0, 0.0);
+      newPos = lightPositions[i];
 
-    lightObjShader.setMat4("model", model);
-    lightObjShader.setVec3("lightColor", lightColor);
-
-    drawMesh(pointLightGeometry);
+      model = glm::mat4(1.0f);
+      model = glm::translate(model, newPos);
+      lightObjShader.setMat4("model", model);
+      lightObjShader.setVec3("lightColor", lightColors[i]);
+      drawMesh(pointLightGeometry);
+    }
+    // --------------------------
 
     // 渲染 gui
     ImGui::Render();
@@ -586,7 +320,7 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height)
 // 键盘输入监听
 void processInput(GLFWwindow *window)
 {
-  if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+  if  (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
   {
     glfwSetWindowShouldClose(window, true);
   }
@@ -611,31 +345,31 @@ void processInput(GLFWwindow *window)
   }
 
   //ssao效果关闭开启
-  static bool togglePressed = false;
+  // static bool togglePressed = false;
 
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !togglePressed)
-    {
-        enableSSAO = !enableSSAO;
-        togglePressed = true;
-    }
+  //   if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !togglePressed)
+  //   {
+  //       enableSSAO = !enableSSAO;
+  //       togglePressed = true;
+  //   }
 
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE)
-    {
-        togglePressed = false;
-    }
+  //   if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE)
+  //   {
+  //       togglePressed = false;
+  //   }
 
-    //ssdo效果关闭开启
-    static bool togglePressed2 = false;
-    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS && !togglePressed2)
-    {
-        enableSSDO = !enableSSDO;
-        togglePressed2 = true;
-    }
+  //   //ssdo效果关闭开启
+  //   static bool togglePressed2 = false;
+  //   if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS && !togglePressed2)
+  //   {
+  //       enableSSDO = !enableSSDO;
+  //       togglePressed2 = true;
+  //   }
 
-    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE)
-    {
-        togglePressed2 = false;
-    }  
+  //   if (glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE)
+  //   {
+  //       togglePressed2 = false;
+  //   }  
 }
 
 // 鼠标移动监听
@@ -689,4 +423,16 @@ unsigned int loadTexture(char const *path)
   }
 
   return textureID;
+}
+
+// 创建默认白色纹理
+unsigned int createDefaultWhiteTexture() {
+    unsigned int tex;
+    glGenTextures(1, &tex);
+    unsigned char white[4] = {255,255,255,255};
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_RGBA, GL_UNSIGNED_BYTE, white);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    return tex;
 }

@@ -58,7 +58,16 @@
         "cinttypes": "cpp",
         "typeinfo": "cpp",
         "variant": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "condition_variable": "cpp",
+        "list": "cpp",
+        "set": "cpp",
+        "unordered_set": "cpp",
+        "ratio": "cpp",
+        "mutex": "cpp",
+        "semaphore": "cpp",
+        "stop_token": "cpp",
+        "thread": "cpp"
     },
     "cmake.sourceDirectory": "D:/openPro/learnOpenglVsCode/kk/include/glm"
 }
