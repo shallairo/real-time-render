@@ -1,1 +1,13 @@
-初步构建了ssao，与ssdo效果，支持pcf，pcss等阴影效果
+实时阴影效果对比
+![origin](shadowMapping.png)
+![pcf](pcf.png)
+![pcss](pcss.png)
+ssao，ssdo效果对比
+![origin](origin.png)
+![ssao](SSAO.png)
+![ssao&&ssdo](AODO.png)
+micofacet BRDF pbr理解思路
+![understanding](PBR.j)
+实现效果
+![pbr](micoficetBRDF.png)
+
