@@ -13,3 +13,7 @@ micofacet BRDF pbr理解思路
 实现效果
 ![pbr](micoficetBRDF.png)
 
+
+
+注意IBL核心三部分  能量补偿项的积分求解+irradience的积分+brdf项积分
+![IBL](IBL.png)
