@@ -108,19 +108,19 @@ src/main.o: src/main.cpp include/glad/glad.h include/KHR/khrplatform.h \
  include/glm/./ext/../detail/../detail/func_matrix.inl \
  include/glm/./ext/../detail/../detail/../geometric.hpp \
  include/glm/./ext/../detail/../detail/../detail/func_geometric.inl \
- D:/opengl/pro1/real-time-render/include/glm/exponential.hpp \
- D:/opengl/pro1/real-time-render/include/glm/detail/type_vec1.hpp \
- D:/opengl/pro1/real-time-render/include/glm/detail/type_vec1.inl \
- D:/opengl/pro1/real-time-render/include/glm/detail/func_exponential.inl \
- D:/opengl/pro1/real-time-render/include/glm/vector_relational.hpp \
- D:/opengl/pro1/real-time-render/include/glm/detail/setup.hpp \
- D:/opengl/pro1/real-time-render/include/glm/detail/func_vector_relational.inl \
- D:/opengl/pro1/real-time-render/include/glm/detail/_vectorize.hpp \
- D:/opengl/pro1/real-time-render/include/glm/common.hpp \
- D:/opengl/pro1/real-time-render/include/glm/detail/_fixes.hpp \
- D:/opengl/pro1/real-time-render/include/glm/detail/func_common.inl \
- D:/opengl/pro1/real-time-render/include/glm/detail/compute_common.hpp \
- D:/opengl/pro1/real-time-render/include/glm/detail/setup.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/exponential.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/type_vec1.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/type_vec1.inl \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/func_exponential.inl \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/vector_relational.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/setup.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/func_vector_relational.inl \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/_vectorize.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/common.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/_fixes.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/func_common.inl \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/compute_common.hpp \
+ D:/openPro/learnOpenglVsCode/kk/include/glm/detail/setup.hpp \
  include/glm/./ext/matrix_double2x2_precision.hpp \
  include/glm/./ext/matrix_float2x2.hpp \
  include/glm/./ext/matrix_float2x2_precision.hpp \

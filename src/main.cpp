@@ -49,25 +49,6 @@ float lastTime = 0.0f;
 float lastX = SCREEN_WIDTH / 2.0f; // 鼠标上一帧的位置
 float lastY = SCREEN_HEIGHT / 2.0f;
 
-//级联划分数量
- int NUM_CASCADES=4;
- const float near=0.1f;
- const float far=100.0f;
- 
-struct CascadeData {
-    float nearDist;  // 该级联的近平面（线性深度，视空间）
-    float farDist;   // 该级联的远平面（线性深度，视空间）
-    std::vector<glm::vec3> cornersWS; // 8 个角点（世界空间）
-    glm::mat4 lightView;
-    glm::mat4 lightProj;
-    glm::mat4 lightVP;
-};
- std::vector<glm::vec3> getFrustumCornersWS(const glm::mat4& view, const glm::mat4& projCascade) ;
- std::vector<float> computeCascadeSplits(float nearPlane, float farPlane,
-                                        int numCascades, float lambda /*0~1*/);
-std::vector<CascadeData> cascades(NUM_CASCADES);
-
-
 Camera camera(glm::vec3(0.0, 0.0, 25.0));
 
 using namespace std;
@@ -156,7 +137,6 @@ int main(int argc, char *argv[])
 
   PlaneGeometry quadGeometry(2.0, 2.0);                // 屏幕四边形
   BoxGeometry boxGeometry(5.0, 5.0, 5.0);              // 盒子
-  BoxGeometry planeBox(50.0, 0.1, 50.0);          // 地面
   SphereGeometry pointLightGeometry(0.17, 64.0, 64.0); // 点光源位置显示
   SphereGeometry objectGeometry(1.0, 64.0, 64.0);      // 圆球
 
@@ -176,8 +156,8 @@ int main(int argc, char *argv[])
       glm::vec3(300.0f, 300.0f, 300.0f),
   };
 
-  int nrRows = 6;
-  int nrColumns = 6;
+  int nrRows = 7;
+  int nrColumns = 7;
   float spacing = 2.5;
 
   sceneShader.use();
@@ -400,11 +380,6 @@ int main(int argc, char *argv[])
     glm::mat4 view = camera.GetViewMatrix();
     glm::mat4 model = glm::mat4(1.0f);
 
-    auto split=computeCascadeSplits(near,far, NUM_CASCADES, 0.5f);
-    for(int i=0;i<NUM_CASCADES;++i){
-
-    }
-
     float radius = 5.0f;
     float camX = sin(glfwGetTime() * 0.5) * radius;
     float camZ = cos(glfwGetTime() * 0.5) * radius;
@@ -433,7 +408,6 @@ int main(int argc, char *argv[])
     sceneShader.setMat4("view", view);
     sceneShader.setVec3("camPos", camera.Position);
 
-    sceneShader.setVec3("albedo", 0.5f, 0.5f, 0.5f);
     for (int row = 0; row < nrRows; ++row)
     {
       sceneShader.setFloat("metallic", (float)row / (float)nrRows);
@@ -449,23 +423,14 @@ int main(int argc, char *argv[])
         drawMesh(objectGeometry);
       }
     }
-    // 绘制地面
-    glEnable(GL_DEPTH_TEST);
-    model = glm::mat4(1.0f);
-    model = glm::translate(model, glm::vec3(0.0f, -10.0f, 0.0f));
-    sceneShader.setMat4("model", model);
-    sceneShader.setFloat("metallic", 0.8f);
-    sceneShader.setFloat("roughness", 0.1f);
-    sceneShader.setVec3("albedo", 0.2f, 0.2f, 0.2f);
-    drawMesh(planeBox);
 
     // 直接采样hdr贴图
     // ----------------
-    // cubemapShader.use();
-    // glActiveTexture(GL_TEXTURE0);
-    // glBindTexture(GL_TEXTURE_2D, hdrMap);
-    // cubemapShader.setMat4("view", view);
-    // cubemapShader.setMat4("projection", projection);
+    cubemapShader.use();
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, hdrMap);
+    cubemapShader.setMat4("view", view);
+    cubemapShader.setMat4("projection", projection);
      //drawMesh(boxGeometry);
     // ----------------
 
@@ -480,7 +445,7 @@ int main(int argc, char *argv[])
     glBindTexture(GL_TEXTURE_CUBE_MAP, prefilterMap); // 显示生成的预过滤图
     drawMesh(boxGeometry);
     // -------------------
-    
+
     // 测试预计算 BRDF 纹理
     // testBrdfShader.use();
     // testBrdfShader.setInt("brdfTexture", 0);
@@ -503,7 +468,7 @@ int main(int argc, char *argv[])
       model = glm::translate(model, newPos);
       lightObjShader.setMat4("model", model);
       lightObjShader.setVec3("lightColor", lightColors[i]);
-      //drawMesh(pointLightGeometry);
+      drawMesh(pointLightGeometry);
     }
     // --------------------------
 
@@ -582,6 +547,33 @@ void processInput(GLFWwindow *window)
   {
     camera.ProcessKeyboard(RIGHT, deltaTime);
   }
+
+  //ssao效果关闭开启
+  // static bool togglePressed = false;
+
+  //   if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && !togglePressed)
+  //   {
+  //       enableSSAO = !enableSSAO;
+  //       togglePressed = true;
+  //   }
+
+  //   if (glfwGetKey(window, GLFW_KEY_F) == GLFW_RELEASE)
+  //   {
+  //       togglePressed = false;
+  //   }
+
+  //   //ssdo效果关闭开启
+  //   static bool togglePressed2 = false;
+  //   if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS && !togglePressed2)
+  //   {
+  //       enableSSDO = !enableSSDO;
+  //       togglePressed2 = true;
+  //   }
+
+  //   if (glfwGetKey(window, GLFW_KEY_G) == GLFW_RELEASE)
+  //   {
+  //       togglePressed2 = false;
+  //   }  
 }
 
 // 鼠标移动监听
@@ -678,71 +670,4 @@ unsigned int loadHdrTexture(char const *path)
   }
 
   return textureID;
-}
-
-std::vector<float> computeCascadeSplits(float nearPlane, float farPlane,
-                                        int numCascades, float lambda /*0~1*/) {
-    std::vector<float> splits(numCascades);
-    float n = nearPlane;
-    float f = farPlane;
-    for (int i = 1; i <= numCascades; ++i) {
-        float si = static_cast<float>(i) / numCascades;
-        float dLin = n + (f - n) * si;
-        float dLog = n * std::pow(f / n, si);
-        splits[i - 1] = glm::mix(dLin, dLog, lambda);
-    }
-    return splits; // 长度为 N，每个值是该级联的“远平面深度”。近平面深度为上一个 split 或 n。
-}
-
-void getFustrumCorner(vector<glm::vec3>&corner,float n,float f){
-
- // 方向向量需单位化
-    glm::vec3 F = glm::normalize(camera.Front);
-    glm::vec3 R = glm::normalize(camera.Right);
-    glm::vec3 U = glm::normalize(camera.Up);
-
-    float aspect = (float)SCREEN_WIDTH / (float)SCREEN_HEIGHT;
-    float tanHalf = tanf(glm::radians(camera.Zoom) * 0.5f);
-    float hNear = 2.0f * tanHalf * n;
-    float wNear = hNear *aspect;
-    float hFar  = 2.0f * tanHalf * f;
-    float wFar  = hFar *aspect;
-
-    glm::vec3 cNear = camera.Position + F * n;
-    glm::vec3 cFar  = camera.Position + F * f;
-
-    // 近面四角
-    glm::vec3 ntl = cNear + (U * (hNear * 0.5f)) - (R * (wNear * 0.5f));
-    glm::vec3 ntr = cNear + (U * (hNear * 0.5f)) + (R * (wNear * 0.5f));
-    glm::vec3 nbl = cNear - (U * (hNear * 0.5f)) - (R * (wNear * 0.5f));
-    glm::vec3 nbr = cNear - (U * (hNear * 0.5f)) + (R * (wNear * 0.5f));
-    // 远面四角
-    glm::vec3 ftl = cFar + (U * (hFar * 0.5f)) - (R * (wFar * 0.5f));
-    glm::vec3 ftr = cFar + (U * (hFar * 0.5f)) + (R * (wFar * 0.5f));
-    glm::vec3 fbl = cFar - (U * (hFar * 0.5f)) - (R * (wFar * 0.5f));
-    glm::vec3 fbr = cFar - (U * (hFar * 0.5f)) + (R * (wFar * 0.5f));
-    corner.push_back(ntl);
-    corner.push_back(ntr);
-    corner.push_back(nbl);
-    corner.push_back(nbr);
-
-    corner.push_back(ftl);
-    corner.push_back(ftr);
-    corner.push_back(fbl);
-    corner.push_back(fbr);
-}
-
-
-std::vector<glm::vec3> getFrustumCornersWS(const glm::mat4& view, const glm::mat4& projCascade) {
-    glm::mat4 inv = glm::inverse(projCascade * view);
-    std::vector<glm::vec3> corners(8);
-    int idx = 0;
-    for (int z = 0; z <= 1; ++z)
-        for (int y = 0; y <= 1; ++y)
-            for (int x = 0; x <= 1; ++x) {
-                glm::vec4 ndc = glm::vec4(x ? 1.f : -1.f, y ? 1.f : -1.f, z ? 1.f : -1.f, 1.f);
-                glm::vec4 world = inv * ndc;
-                corners[idx++] = glm::vec3(world) / world.w;
-            }
-    return corners;
 }
