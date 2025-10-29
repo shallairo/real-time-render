@@ -85,8 +85,8 @@ void main() {
       float NdotH = max(dot(N, H), 0.0);
       float HdotV = max(dot(H, V), 0.0);
 
-      //(4.0 * HdotV)是简化版的jacobian行列式 链式法则
-      float pdf = D * NdotH / pow(4.0*HdotV,3) + 0.0001;
+      //(4.0 * HdotV)是简化版的jacobian行列式 链式法则 这里注意我们积分的单位为L入射方向，故需要jacobian行列式
+      float pdf = D * NdotH / 4.0*HdotV + 0.0001;
 
       float resolution = 512.0; // 原立方体每个面的分辨率
 
