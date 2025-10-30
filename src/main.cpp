@@ -136,7 +136,6 @@ int main(int argc, char *argv[])
   //Shader testBrdfShader("shader/pbrLightShader/test_brdf_vert.glsl", "shader/pbrLightShader/test_brdf_frag.glsl");
 
   PlaneGeometry quadGeometry(2.0, 2.0);                // 屏幕四边形
-  BoxGeometry plan(50,0.1,50);
   BoxGeometry boxGeometry(5.0, 5.0, 5.0);              // 盒子
   SphereGeometry pointLightGeometry(0.17, 64.0, 64.0); // 点光源位置显示
   SphereGeometry objectGeometry(1.0, 64.0, 64.0);      // 圆球
@@ -198,7 +197,7 @@ int main(int argc, char *argv[])
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-  unsigned int hdrMap = loadHdrTexture("static/texture/christmas_photo_studio_01_4k.hdr");
+  unsigned int hdrMap = loadHdrTexture("static/texture/Alexs_Apt_2k.hdr");
   cubemapShader.use();
   cubemapShader.setInt("equireMap", 0);
 
@@ -408,7 +407,7 @@ int main(int argc, char *argv[])
     sceneShader.setMat4("projection", projection);
     sceneShader.setMat4("view", view);
     sceneShader.setVec3("camPos", camera.Position);
-    sceneShader.setVec3("albedo", 1, 0.4f, 0.68f);
+
     for (int row = 0; row < nrRows; ++row)
     {
       sceneShader.setFloat("metallic", (float)row / (float)nrRows);
@@ -425,17 +424,6 @@ int main(int argc, char *argv[])
       }
     }
 
-    sceneShader.setMat4("projection", projection);
-    sceneShader.setMat4("view", view);
-    sceneShader.setVec3("camPos", camera.Position);
-    model = glm::mat4(1.0f);
-    model=glm::translate(model,glm::vec3(0,-15,0));
-    sceneShader.setMat4("model", model);
-    sceneShader.setVec3("albedo", 0.8f, 0.8f, 0.8f);
-    sceneShader.setFloat("metallic", 0.8f);
-    sceneShader.setFloat("roughness", 0.2f);
-
-    drawMesh(plan);
     // 直接采样hdr贴图
     // ----------------
     cubemapShader.use();
@@ -443,7 +431,7 @@ int main(int argc, char *argv[])
     glBindTexture(GL_TEXTURE_2D, hdrMap);
     cubemapShader.setMat4("view", view);
     cubemapShader.setMat4("projection", projection);
-    //drawMesh(boxGeometry);
+     //drawMesh(boxGeometry);
     // ----------------
 
     // 使用处理之后的环境贴图

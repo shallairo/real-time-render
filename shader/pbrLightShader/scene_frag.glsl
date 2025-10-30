@@ -125,8 +125,6 @@ void main() {
 
   vec3 ambient = (kD * diffuse + specular) * ao;
 
-  ambient=specular*ao;
-
   vec3 color = ambient + Lo;
 
   // HDR 色调映射
